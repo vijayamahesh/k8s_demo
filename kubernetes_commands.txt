@@ -1,0 +1,429 @@
+kubectl get pods nginx
+kubectl get pods -o wide
+kubectl run redis --image=redis123 --dry-run=client -o yaml
+kubectl run redis --image=redis123 --dry-run=client -o yaml > redis-pod.yml
+kubectl replace -f replicaset-definition.yml
+kubectl scale --replicas=6 -f replicaset-definition.yml    # This is using argument and file that we used to create the rs
+kubectl scale --replicas=6  replicaset myapp-replicaset    # This is using type and object name 
+
+Replica set commands:
+====================
+kubectl create -f replicaset-definition.yml   # is use to create a replica set
+kubectl get replicaset    # list of replica sets created
+kubectl delete replicaset myapp-replicaset   # to delete a replica set and also deletes the underlying pods
+kubectl replace -f replicaset-definition.yml   # is used to update the replica set
+kubectl scale --replicas=6 relicaset myapp-replicaset   # for scaling the replicas in the replication set
+kubectl get replicasets.apps # check how many replicasets exists on the system.
+================================================================================================
+Deployments:
+kubectl get all # Gives all deployments , then replicasets , then pods that are created .
+kubectl describe deployments fronend-deployment | grep -i image # this is to check a image used for a deployment
+
+# create deployment with deployment name and an image name
+kubectl create deployment httpd-deployment --image=httpd:2.4-alpine
+# The above command deployment is created with one pod .
+# then scale the replicas to 3
+kubectl scale deployment --replicas=3 httpd-deployment
+====================================================================================================
+# Formatting using kubectl command
+kubectl [command] [type] [name] -o <output_format>
+
+kubectl get deployment httpd-deployment -o wide
+# Above command displays additional details like container, images used, selector
+kubectl get deployment httpd-deployment -o yaml
+#prints only the name if you use -o name
+kubectl get deployment httpd-deployment -o name
+kubectl get deployment httpd-deployment -o json
+
+kubectl run nginx-test --image=nginx --dry-run=client -o yaml
+#gives yaml out put of the object file that will be given to the api server.
+kubectl run nginx-test --image=nginx --labels="component=frontend" --dry-run=client -o yaml
+# sets the labels to the desired value.
+kubectl run hazelcast --image=hazelcast/hazelcast  --port=5701 --dry-run=client -o yaml
+# creates a hazelcast pod with containerPort on 5701
+kubectl run hazelcat --image=hazelcast/hazelcast --port=5701 --labels="env=PROD,app=hazelcast" --dry-run=client -o yaml
+#sets labels compared to the revious command
+# below command is used to set the environment variables
+https://kubernetes.io/docs/reference/kubectl/cheatsheet/
+https://kubernetes.io/docs/reference/kubectl/overview/
+========================================================================================================
+Namespaces:
+
+kubectl get pods --all-namespaces
+# displays namespaces and pods belongin to all name spaces in the command response
+kubectl get pods --all-namespaces | grep blue 
+# To find a blue pod belongs to which namespace.
+kubectl get ns
+# above command will display all namespaces
+kubectl get ns --no-headers | wc -l
+# Above command gives the no no of namesapces in k8s
+kubectl -n research get pods | wc -l
+# Above command give the no of pods in research namespace
+========================================================================================================
+Imperative commands:
+kubectl run nginx --image=ngix
+kubectl run nginx --image=nginx --dry-run=client -o yaml
+kubectl create deployment nginx --image=nginx --dry-run=client -o yaml
+#create a nginx deployment with 4 replicas
+kubectl create deployment nginx --image=nginx --replicas=4 --dry-run=client -o yaml
+#scale deployment 
+kubectl scale deployment nginx --replicas=10
+===
+creating the services imperatively using kubectl
+## Automatically user pods labels as selectors
+kubectl expose pod redis --port=6379 --name redis-service --dry-run=client -o yaml
+Above uses the same selectors that pod used in its object file.
+
+## create a service with given selector and port deifnitions
+kubectl create service clusterip redis-cluster-ip-service --tcp=6379:6379 
+
+kubectl expose pod nginx --name nignx-service --port=80 --type=NodePort --dry-run=client -o yaml
+kubectl create service nodeport nginx --tcp=80:80 --node-port=30080 --dry-run=client -o yaml
+
+
+kubectl expose pod redis --name redis-service --port 6379 --target-port 6379 --dry-run=client -o yaml
+
+
+kubectl run custom-nginx --image=nginx --port 8080     
+
+#Above command creates a pod with image nginx and containerPort with 8080
+
+================================================================================
+configurations:
+
+containers:
+  - name: ubuntu
+    image: ubuntu
+	command: ["sleep","5000"]
+	or 
+containers:
+  - name: ubuntu
+    image: ubuntu
+	command: 
+	  - "sleep"
+	  - "5000"
+	
+#how to check the default command  in any image
+docker inspect ubuntu   # This is an example to see the instruction 
+
+===================================================================
+
+Environment Variables and configmaps
+==================================
+
+kubectl create configmaps
+
+or 
+
+kubectl apply -f <configmap>.yaml # To create  a config map.
+
+
+kubectl create configmap app-config --from-lieteral=<key>=<value>
+
+kubectl create configmap app-config \
+  --from-literal=APP_COLOR=blue
+  
+# if you want to add multiple key, value pairs , you should again add --from-literal command again 
+
+ex: 
+kubectl create configmap app-config \
+  --from-literal=APP_COLOR=blue \
+  --from-literal=APP_ENV=prod
+
+kubectl create configmap app-config \
+  --from-file=app_config.properties
+
+#All the above are imperative approaches to create config map.
+
+
+How to do we declare this in maps:
+
+env:
+  - name: APP_COLOR
+   value: red
+
+
+ex2:
+
+envFrom:
+  - configMapRef:
+      name: web-app-config-map
+	 
+ex: 3
+
+env:
+  - name: APP_COLOR
+    valueFrom:
+	  secretKeyRef: 
+	    name: app-secret
+		key: APP_COLOR
+		
+# we inject the whole data as a files in a volume
+volume:
+  - name: app-cofig-volume
+    configMap:
+	  name: app-config
+
+
+
+#how to get  a existing object configuration and create  a yaml out if it is using the get
+kubectl get pod webapp-color -o yaml > pod.yaml
+#################
+kubectl explain pods --recursive | grep envFrom -A3
+
+# remeber with -A3 it is pring 3 variations as i see
+################
+
+#################################################################################################
+Secrets:
+#imerative approaches
+kubectl create secret generic app-secret --from-literal=DB_HOST \
+ --from-literal=DB_USER=root \
+ --from-literal=DB_PASSWORD=paswrd
+ 
+#creating secret from a file
+kubectl create secret generic app-secret --from-file=app-config.properties
+#Using declarative approache
+#secret 
+when creating with imperative approach the values are automatically encoded in base64 .
+when writing a config file for secret object type for value you will have to explicity convert them into base64 values 
+otherwise it says not a base64 value when trying to create an object 
+
+
+
+# Now diffirent type of secrets we can create 
+generic
+tls
+docker-registry
+
+
+generic we use to create secret with arbitary number of values 
+# injecting the environment variables into pods
+As as a whole all environment variables 
+
+
+envFrom:
+ - secretRef:
+     name: app-secret
+	 
+# injecting single environment variables
+envFrom:
+  - name: DB_PASSWORD
+    valueFrom:
+	  name: app-secret
+      key: DB_PASSWORD
+	  
+# inecting from volumes
+
+volumes:
+  - name: app-secret-volume
+      secret:
+	    secretName: app-secret
+#########################################################################
+secutiry contexts:
+##########
+
+how to check with which user the pod is running?
+kubectl exec <pod_name> -- whoami
+ex: kubectl exec ubuntu-sleeper -- whoami
+
+
+
+############################################################################
+service accounts:
+
+##########################################################################
+
+Taints and Tolerations
+
+Taints are kept on nodes and tolerations are kept on pods.
+
+By deafult master node has the same capalibity as the other worker nodes in the k8 cluster
+but we are not placing any pods on master node.
+As the master node is has Taints
+for referece: 
+run the command on the master node.
+
+kubectl describe node kubemaster | grep Taint
+
+
+
+Taint only tells a pod from restricting from a particular node.
+
+even if a pod a taint tolerance , it dosen't mean that it should be scheduled only
+on the node which has that taint , scheduler can also schedule this node on other nodes as well as the 
+node which has taint.
+
+# How to apply taint  on a node .
+kubectl taint nodes node-name key=vlaue:tolerance
+ex: kubectl taint nodes node1 key=blue:NoSchedule
+
+# here tolerance can have any of the three values NoSchedule | PrefelNoSchedule | No Execute
+
+kubectl taint nodes node01 key=spray:NoSchedule  # This is for taint on a node01
+kubectl taint nodes node01 key=spray:NoSchedule- # This is for untaint on node01
+############################################################################
+#Node Selector and Node affinity
+# Below command is used to apply node label 
+ex: kubectl label node node01 color=blue
+#In the above command we have added label color with value blue
+This is use in future for nodeSelector in pod deifnitions
+for affinity in pod deifnitions
+kubectl get nodes node01 --show-labels
+The above command is used to show labels 
+kubectl get pods -o wide 
+#Above command is used to see pods sitting on which node#
+#############################################################################
+
+
+#Certification Tips And#
+########################
+Certification Tips - Student Tips
+Make sure you check out these tips and tricks from other students who have cleared the exam:
+
+https://www.linkedin.com/pulse/my-ckad-exam-experience-atharva-chauthaiwale/
+
+https://medium.com/@harioverhere/ckad-certified-kubernetes-application-developer-my-journey-3afb0901014
+
+https://github.com/lucassha/CKAD-resources
+
+
+##################################################################################
+https://github.com/dennyzhang/cheatsheet-kubernetes-A4
+
+https://medium.com/@atharvac.cloud/kubernetes-deep-dive-part-3-generators-for-quick-poc-6cac698f08eb
+
+
+###############################
+how to see the logs
+kubectl get -n=elastic-stack  logs app
+
+
+##########################################################
+Readiness and Liveness probes
+
+
+##########################################################################
+At any stage a pod status can be one of the below three values
+pending  ==> This is before scheduling a pod
+container creating ==> after scheduling a pod and when the images are being pulled and container are getting created
+Running ==> This is when the pod is running.
+##########################################################################
+pod conditions
+
+we can seee the pod conditions using
+kubectl describe pod 
+
+################################################
+
+Readiness probes 
+In case of http 
+
+readinessProbes:
+  httpGet:
+    path:/api/ready
+    port:8080
+  initialDealySeconds: 10
+  periodSeconds: 5
+  failureThreshold:8
+
+Incase of tcp
+readinessProbes:
+  tcpSocket:
+    port: 3306
+
+
+In case of executing a script
+
+readinessProbes
+  exec:
+    command:
+      - cat
+      - /app/is_ready
+
+#################################################################
+list all resources in a k8 namespace
+kubectl get all -n=default
+kubectl get all  # if you are in the default namespace
+
+#################################################################
+
+kubernetes logs : 
+kubectl logs -f <pod> 
+kubectl logs -f <pod> <container_nm>  # in case of multi contianer pods
+
+
+################################################################################
+pod desgin
+
+Labels and selectors
+
+kubectl get pods --selector env=dev
+
+Pod rollout rollback and deployments:
+
+create: 
+kubectl create -f deloyment-definition.yaml
+
+Get: 
+kubectl get deployments
+
+Update: 
+kubectl apply -f deployment-definition.yaml
+kubectl set image deployment/my-deployment nginix=nginix:1.9.1
+
+Status:
+kubectl rollout status deployment/my-deployment 
+kubectl rollout history deployment/myapp-deploymen
+
+Roll back : 
+kubectl rollbout undo deployment/myapp-deployment
+
+
+# update image in a deployment 
+kubectl set image deployment frontend
+
+
+###################################################################
+Services:
+
+
+Ingres: 
+kubectl get all --a
+
+
+use imperative command to expose a service on top of a ingress-controller
+kubectl expose deployment -n ingress-space ingress-controller --type=NodePort --port=80 --name=ingress --dry-run -o yaml >ingress.yaml
+
+
+Network policies:
+#######################
+
+
+check the netowrk polices in the cluster
+kubectl get  netpol
+
+
+get pods using a specific label 
+kubectl get pods -l name=payroll
+Above command is used to get the pods in the cluster where the selector is mactchig the labels
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+========================================
+Question on how to scale the the replicas instead of impreatively scaling up using command line.
